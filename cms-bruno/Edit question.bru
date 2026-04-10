@@ -1,0 +1,19 @@
+meta {
+  name: Edit question
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{baseURL}}/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "question": "Was this question just edited?",
+    "answer": "Yes",
+    "genres": ["technology"]
+  }
+}

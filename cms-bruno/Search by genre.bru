@@ -1,0 +1,15 @@
+meta {
+  name: Search by genre
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseURL}}?genre=country
+  body: none
+  auth: none
+}
+
+params:query {
+  genre: country
+}
