@@ -1,84 +1,123 @@
 const express = require('express');
 const router = express.Router();
+const prisma = require("../lib/prisma");
 
-const questions = require("../data/questions");
+// Format the appearance of questions' list of genres so that their own ID is not visible on the page. Looks nicer
+function formatQuestion(question) {
+  return {
+    ...question,
+    genres: question.genres.map((g) => g.category),
+  };
+}
+
 
 // GET /api/questions/ , /api/questions?genre=country
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
     const {genre} = req.query;
-    if (!genre) {
-        return res.json(questions);
-    }
-    const filteredQuestions = questions.filter(p=>p.genres.includes(genre));
-    res.json(filteredQuestions);
-})
+
+    const where = genre ?
+    { genres: { some: { category: genre } } }: {};
+
+    const filteredQuestions = await prisma.question.findMany({
+        where,
+        include: {genres: true},
+        orderBy: {Qid: "asc" }
+});
+
+    res.json(filteredQuestions.map(formatQuestion));
+});
 
 // GET /api/questions/:Qid
-router.get("/:Qid", (req, res) => {
+router.get("/:Qid", async (req, res) => {
     const Qid = Number(req.params.Qid);
-    const question = questions.find(p=>p.Qid === Qid);
+
+    const question = await prisma.question.findUnique({
+        where: { Qid: Qid },
+        include: { genres: true },
+    });
+
     if (!question) {
         return res.status(404).json({msg: "Question not found"});
     }
-    res.json(question);
+    res.json(formatQuestion(question));
 });
 
 // POST /api/questions
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
     const {question, answer, genres} = req.body;
     if (!question || !answer || !genres) {
         return res.status(400).json({msg: "A question, its answer and the genres are required"})
     }
 
-    // Calculate, what is the next assignable ID in the list of questions for a new one
-    const existingQids = questions.map(p=> p.Qid) // [1,2,3,4]
-    const maxQid = Math.max(...existingQids)
+    const genresArray = Array.isArray(genres) ? genres : [];
 
-    const newQuestion = {
-        Qid: questions.length ? maxQid + 1 : 1,     // Assign next ID to the question, otherwise it's 1 if database empty
-        question, answer,
-        genres: Array.isArray(genres) ? genres: [] // Check if keywords coming from the user are an array, if they are add them, otherwise empty
-    }
-    //Push new question
-    questions.push(newQuestion);
-    res.status(201).json(newQuestion);
+    const newQuestion = await prisma.question.create({
+        data: {
+            question, answer, 
+            genres: {
+                connectOrCreate: genresArray.map((gnr) => ({
+                where: { category: gnr }, create: { category: gnr },
+            })), },
+        },
+        include: { keywords: true },
+  });
+
+
+    res.status(201).json(formatQuestion(newQuestion));
 });
 
 //PUT /api/posts/:postID
-router.put("/:Qid", (req, res) => {
+router.put("/:Qid", async (req, res) => {
     // Get question ID, check if the question we want to modify exists
     const Qid = Number(req.params.Qid);
-    const questionGet = questions.find(p=>p.Qid === Qid);
+    const questionGet = await prisma.question.findUnique({ where: { Qid: Qid } } );
     if (!questionGet) {
         return res.status(404).json({msg: "Question not found"});
     }
 
     const {question, answer, genres} = req.body;
+
     if (!question || !answer || !genres) {
         return res.status(400).json({msg: "A question, its answer and the genres are required"})
     }
 
-    // Modifying field by field
-    questionGet.question = question;
-    questionGet.answer = answer;
-    questionGet.genres = Array.isArray(genres) ? genres : [];
 
-    res.json(questionGet);
+    const genresArray = Array.isArray(genres) ? genres : [];
 
+    // Use update for the question with specific ID, new data is what's given
+    const updatedQuestion = await prisma.question.update({
+    where: { Qid: Qid },
+    data: {
+      question, answer,
+      genres: {
+        set: [],
+        connectOrCreate: genresArray.map((gnr) => ({
+          where: { category: gnr },
+          create: { category: gnr },
+        })),
+      },
+    },
+    include: { genres: true },
+  });
+
+    res.json(formatQuestion(questionGet));
 });
 
 //DELETE /api/posts/:Qid
-router.delete("/:Qid", (req, res) => {
+router.delete("/:Qid", async (req, res) => {
     const Qid = Number(req.params.Qid);
-    const questionIndex = questions.findIndex(p => p.Qid === Qid);
-
+    const question = await prisma.question.findUnique({
+        where: { id: Qid },
+        include: { genres: true },
+    });
     if (Qid === -1) {
-        return res.status(404).json({msg:"Question not found"});
+    return res.status(404).json({msg:"Question not found"});
     }
-    const deletedQuestion = questions.splice(questionIndex, 1); //If deletable question exists, assign it to a const, we use a function from arrays called splice
+    await prisma.question.delete({where: { Qid: Qid } });
+    
     res.json({
         msg:"Question deleted successfully",
-        question: deletedQuestion
+        question: formatQuestion(question),
     });
 });
 
