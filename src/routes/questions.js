@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require("../lib/prisma");
+const authenticate = require('../middleware/auth');
+
+// Import isOwner, additional middleware for PUT & DELETE to check if user is owner of question they want to update/remove
+const isOwner = require("../middleware/isOwner");
 
 // Format the appearance of questions' list of genres so that their own ID is not visible on the page. Looks nicer
 function formatQuestion(question) {
@@ -9,6 +13,9 @@ function formatQuestion(question) {
     genres: question.genres.map((g) => g.category),
   };
 }
+
+// Adding general middleware, all roles here are protected by authentication
+router.use(authenticate);
 
 
 // GET /api/questions/ , /api/questions?genre=country
@@ -53,21 +60,22 @@ router.post("/", async (req, res) => {
 
     const newQuestion = await prisma.question.create({
         data: {
-            question, answer, 
+            question, answer,
+            userId: req.user.userId,
             genres: {
                 connectOrCreate: genresArray.map((gnr) => ({
                 where: { category: gnr }, create: { category: gnr },
             })), },
         },
-        include: { keywords: true },
+        include: { genres: true },
   });
 
 
     res.status(201).json(formatQuestion(newQuestion));
 });
 
-//PUT /api/posts/:postID
-router.put("/:Qid", async (req, res) => {
+//PUT /api/questions/:QID
+router.put("/:Qid", isOwner, async (req, res) => {
     // Get question ID, check if the question we want to modify exists
     const Qid = Number(req.params.Qid);
     const questionGet = await prisma.question.findUnique({ where: { Qid: Qid } } );
@@ -103,8 +111,8 @@ router.put("/:Qid", async (req, res) => {
     res.json(formatQuestion(questionGet));
 });
 
-//DELETE /api/posts/:Qid
-router.delete("/:Qid", async (req, res) => {
+//DELETE /api/questions/:Qid
+router.delete("/:Qid", isOwner, async (req, res) => {
     const Qid = Number(req.params.Qid);
     const question = await prisma.question.findUnique({
         where: { id: Qid },
