@@ -2,9 +2,9 @@ const prisma = require("../lib/prisma");
 
 // Look up question by ID from URL
 async function isOwner (req, res, next) {
-    const qid = Number(req.params.QId);
+    const Qid = Number(req.params.Qid);
     const question = await prisma.question.findUnique({
-      where: { qid },
+      where: { Qid },
       include: { genres: true },
     });
 

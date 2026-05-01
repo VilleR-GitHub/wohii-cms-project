@@ -108,14 +108,16 @@ router.put("/:Qid", isOwner, async (req, res) => {
     include: { genres: true },
   });
 
-    res.json(formatQuestion(questionGet));
+    // TO BE FIXED!!! Currently question formatting is broken (on PUT & DELETE genres are not printed now or the API call fails)
+    //res.json(formatQuestion(questionGet));
+    res.json(questionGet);
 });
 
 //DELETE /api/questions/:Qid
 router.delete("/:Qid", isOwner, async (req, res) => {
     const Qid = Number(req.params.Qid);
     const question = await prisma.question.findUnique({
-        where: { id: Qid },
+        where: { Qid: Qid },
         include: { genres: true },
     });
     if (Qid === -1) {
@@ -125,7 +127,8 @@ router.delete("/:Qid", isOwner, async (req, res) => {
     
     res.json({
         msg:"Question deleted successfully",
-        question: formatQuestion(question),
+        //question: formatQuestion(question)
+        question: question
     });
 });
 
