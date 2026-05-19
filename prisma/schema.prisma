@@ -13,7 +13,7 @@ model User {
   password        String @db.VarChar(255)
   name            String @db.VarChar(100)
   questions       Question[]
-
+  attempts           Attempt[]
   @@map("users")
 }
 
@@ -23,8 +23,10 @@ model Question {
   question  String    @db.VarChar(255)
   answer    String    @db.Text
   genres    Genre[]
+  imageUrl String?    @db.VarChar(255)
   userId    Int
   user      User @relation(fields: [userId], references: [id])
+  attempts     Attempt[]
   @@map("questions")
 }
 
@@ -34,4 +36,16 @@ model Genre {
   questions Question[]
 
   @@map("genres")
+}
+
+model Attempt {
+  id          Int        @id @default(autoincrement())
+  attemptedAt DateTime   @default(now())
+  userId      Int
+  user        User       @relation(fields: [userId], references: [id])
+  Qid         Int
+  question    Question   @relation(fields: [Qid], references: [Qid])
+
+  @@unique([userId, Qid])
+  @@map("attempts")
 }

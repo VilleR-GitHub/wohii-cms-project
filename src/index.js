@@ -3,14 +3,18 @@ const express = require('express');
 const app = express();
 const postsRouter = require("./routes/questions");
 const authRouter = require("./routes/auth");
+const path = require("path");
 
 const prisma = require("./lib/prisma");
 const PORT = process.env.PORT || 3000;
+
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 //Middleware to parse JSON bodies
 app.use(express.json());
 app.use("/api/auth", authRouter);
 app.use("/api/questions", postsRouter);
+
 
 // Default response (404) if resource not found
 app.use((req,res) => {

@@ -13,7 +13,7 @@ const seedQuestions = [
     Qid: 2,
     question: "What is 3 times 4?",
     answer: "12",
-    genres: ["math", "calculation"]
+    genres: ["math"]
   },
   {
     Qid: 3,
@@ -23,7 +23,7 @@ const seedQuestions = [
   },
   {
     Qid: 4,
-    question: "What is the only word with the letter 'Å' modern finnish lexicon?",
+    question: "What is the only word with the letter 'Å' within the modern finnish lexicon?",
     answer: "Ångström",
     genres: ["language", "country"]
   }
