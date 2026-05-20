@@ -114,13 +114,13 @@ async function showApp() {
   await loadQuestions();
 }
 
-async function loadQuestions(keyword = "", page = 1) {
+async function loadQuestions(genre = "", page = 1) {
   const container = document.getElementById("questions-container");
   container.innerHTML = '<p class="loading">Loading questions...</p>';
 
   try {
     const params = new URLSearchParams({ page, limit: CONFIG.QUESTIONS_PER_PAGE });
-    if (keyword) params.set("keyword", keyword);
+    if (genre) params.set("genre", genre);
     const result = await apiFetch(`${CONFIG.ROUTES.QUESTIONS}?${params}`);
     const { data: questions, total, totalPages } = result;
     const currentUserId = getCurrentUserId();
@@ -141,9 +141,9 @@ async function loadQuestions(keyword = "", page = 1) {
       <div class="toolbar">
         <button class="btn btn-primary" id="new-question-btn">+ New Question</button>
         <div class="search-bar">
-          <input type="text" id="keyword-input" placeholder="Search by keyword..." value="${keyword}" />
+          <input type="text" id="genre-input" placeholder="Filter by genre..." value="${genre}" />
           <button class="btn btn-search" id="search-btn">Search</button>
-          ${keyword ? `<button class="btn btn-clear" id="clear-btn">Clear</button>` : ""}
+          ${genre ? `<button class="btn btn-clear" id="clear-btn">Clear</button>` : ""}
         </div>
       </div>`;
 
@@ -159,8 +159,8 @@ async function loadQuestions(keyword = "", page = 1) {
             ${q[CONFIG.API_FIELDS.SOLVED] ? `<span class="badge-solved">Solved</span>` : ""}
           </h3>
           ${
-            q.keywords && q.keywords.length
-              ? `<div class="question-keywords">${q.keywords.map((k) => `<span class="keyword">${k}</span>`).join("")}</div>`
+            q.genres && q.genres.length
+              ? `<div class="question-genres">${q.genres.map((k) => `<span class="genre">${k}</span>`).join("")}</div>`
               : ""
           }
           <div class="question-actions">
@@ -196,10 +196,10 @@ async function loadQuestions(keyword = "", page = 1) {
     document.getElementById("new-question-btn").addEventListener("click", () => showQuestionForm());
 
     document.getElementById("search-btn").addEventListener("click", () => {
-      loadQuestions(document.getElementById("keyword-input").value.trim(), 1);
+      loadQuestions(document.getElementById("genre-input").value.trim(), 1);
     });
 
-    document.getElementById("keyword-input").addEventListener("keydown", (e) => {
+    document.getElementById("genre-input").addEventListener("keydown", (e) => {
       if (e.key === "Enter") loadQuestions(e.target.value.trim(), 1);
     });
 
@@ -207,10 +207,10 @@ async function loadQuestions(keyword = "", page = 1) {
     if (clearBtn) clearBtn.addEventListener("click", () => loadQuestions());
 
     const prevBtn = document.getElementById("prev-btn");
-    if (prevBtn) prevBtn.addEventListener("click", () => loadQuestions(keyword, page - 1));
+    if (prevBtn) prevBtn.addEventListener("click", () => loadQuestions(genre, page - 1));
 
     const nextBtn = document.getElementById("next-btn");
-    if (nextBtn) nextBtn.addEventListener("click", () => loadQuestions(keyword, page + 1));
+    if (nextBtn) nextBtn.addEventListener("click", () => loadQuestions(genre, page + 1));
 
     container.querySelectorAll(".question-link, .read-more").forEach((el) => {
       el.addEventListener("click", (e) => {
@@ -257,8 +257,8 @@ async function loadQuestionDetail(qId) {
         ${q.imageUrl ? `<img class="question-image" src="${q.imageUrl}" alt="">` : ""}
         <p class="question-answer">${q.answer}</p>
         ${
-          q.keywords && q.keywords.length
-            ? `<div class="question-keywords">${q.keywords.map((k) => `<span class="keyword">${k}</span>`).join("")}</div>`
+          q.genres && q.genres.length
+            ? `<div class="question-genres">${q.genres.map((k) => `<span class="genre">${k}</span>`).join("")}</div>`
             : ""
         }
         ${
@@ -289,7 +289,7 @@ async function loadQuestionDetail(qId) {
 async function showQuestionForm(qId) {
   const container = document.getElementById("questions-container");
   const isEdit = !!qId;
-  let q = { question: "", answer: "", keywords: [] };
+  let q = { question: "", answer: "", genres: [] };
 
   if (isEdit) {
     try {
@@ -314,8 +314,8 @@ async function showQuestionForm(qId) {
           <textarea id="q-answer" rows="4" required>${q.answer}</textarea>
         </div>
         <div class="form-group">
-          <label for="q-keywords">Keywords (comma-separated)</label>
-          <input type="text" id="q-keywords" value="${q.keywords ? q.keywords.join(", ") : ""}" />
+          <label for="q-genres">genres (comma-separated)</label>
+          <input type="text" id="q-genres" value="${q.genres ? q.genres.join(", ") : ""}" />
         </div>
         <div class="form-group">
           <label for="q-image">Image ${isEdit ? "(leave blank to keep current)" : "(optional)"}</label>
@@ -340,7 +340,7 @@ async function showQuestionForm(qId) {
     const body = new FormData();
     body.append("question", document.getElementById("q-question").value);
     body.append("answer", document.getElementById("q-answer").value);
-    body.append("keywords", document.getElementById("q-keywords").value);
+    body.append("genres", document.getElementById("q-genres").value);
     const imageFile = document.getElementById("q-image").files[0];
     if (imageFile) body.append("image", imageFile);
 
@@ -371,8 +371,8 @@ async function playQuestion(qId) {
         <div class="play-question-text">${q.question}</div>
         ${q.imageUrl ? `<img class="question-image" src="${q.imageUrl}" alt="" style="margin:0 auto 1rem">` : ""}
         ${
-          q.keywords && q.keywords.length
-            ? `<div class="question-keywords" style="justify-content:center;margin-bottom:1.5rem">${q.keywords.map((k) => `<span class="keyword">${k}</span>`).join("")}</div>`
+          q.genres && q.genres.length
+            ? `<div class="question-genres" style="justify-content:center;margin-bottom:1.5rem">${q.genres.map((k) => `<span class="genre">${k}</span>`).join("")}</div>`
             : ""
         }
         <form id="play-form" style="text-align:left">
@@ -401,19 +401,17 @@ async function playQuestion(qId) {
       resultEl.innerHTML = "";
 
       const answer = document.getElementById("play-answer").value;
-
       try {
-        const result = await apiFetch(`${CONFIG.ROUTES.QUESTIONS}/${qId}/play`, {
+        const result = await apiFetch(`${CONFIG.ROUTES.QUESTIONS}/${qId}/attempt`, {
           method: "POST",
           body: JSON.stringify({ answer }),
         });
-
         if (result.correct) {
           resultEl.innerHTML = `<div class="play-result correct">Correct!</div>`;
         } else {
           resultEl.innerHTML = `
             <div class="play-result incorrect">
-              Incorrect! The answer was: <strong>${result.correctAnswer}</strong>
+              Incorrect! The answer was: <strong>${q.answer}</strong>
             </div>`;
         }
       } catch (err) {
