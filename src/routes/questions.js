@@ -36,7 +36,7 @@ function formatQuestion(question) {
     genres: question.genres.map((g) => g.category),
     userName: question.user?.name || null,
     attempted: question.attempts ? question.attempts.length > 0 : false,
-    //attemptCount: question._count.attempts ?? 0,
+    attemptCount: question?._count?.attempts || 0,
     user: undefined,
     _count: undefined,
     attempts: undefined
@@ -81,6 +81,7 @@ router.get("/", async (req, res) => {
         data: filteredQuestions.map(formatQuestion),
         page,
         limit,
+        total,
         totalPages: Math.ceil(total / limit),       //Number of total pages that there are, useful for frontend. Math ceiling to round up to next integer
     })
 });
@@ -114,7 +115,7 @@ router.post("/", upload.single("image"), async (req, res) => {
         return res.status(400).json({msg: "A question, its answer and the genres are required"})
     }
 
-    const genresArray = Array.isArray(genres) ? genres : [];
+    const genresArray = (genres ? genres : []).split(",").map((g) => g.trim());
     const imageUrl = req.file ? `/uploads/${req.file.filename}`:null;
 
     const newQuestion = await prisma.question.create({
@@ -152,7 +153,7 @@ router.put("/:Qid", isOwner, upload.single("image"), async (req, res) => {
     // PUT overwrites image if new file uploaded, otherwise keep old one
     const imageUrl = req.file ? `/uploads/${req.file.filename}`:null;
 
-    const genresArray = Array.isArray(genres) ? genres : [];
+    const genresArray = genres.split(",").map((g) => g.trim()).filter(Boolean);
 
     // Use update for the question with specific ID, new data is what's given
     const updatedQuestion = await prisma.question.update({
@@ -233,6 +234,7 @@ router.post("/:Qid/attempt", async (req, res) => {
     res.status(201).json({
         id: attempt.id,
         Qid,
+        correct: req.body.answer.trim().toLowerCase() === question.answer.trim().toLowerCase(),
         attempted: true,
         attemptCount,
         attemptedAt: attempt.attemptedAt,
